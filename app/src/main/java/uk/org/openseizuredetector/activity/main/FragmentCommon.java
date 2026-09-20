@@ -23,6 +23,8 @@ import uk.org.openseizuredetector.utils.PreferenceUtils;
 
 public class FragmentCommon extends FragmentOsdBaseClass {
     String TAG = "FragmentCommon";
+    private static final long LATENCY_WARN_MS = 30_000;
+    private static final long LATENCY_CRITICAL_MS = 120_000;
 
     // Store mode state for dynamic UI generation (e.g. algorithm badges)
     private boolean mIsBasicMode = true;
@@ -177,6 +179,8 @@ public class FragmentCommon extends FragmentOsdBaseClass {
 
             applyAlarmDisplay(tv, alarmCard, alarmText, alarmCardColor, alarmTextColor);
 
+            updateWearDiagnosticLine();
+
             // Update algorithm status display with color-coded individual algorithm states
             updateAlgorithmStatusDisplay();
 
@@ -284,6 +288,67 @@ public class FragmentCommon extends FragmentOsdBaseClass {
 
         } catch (Exception e) {
             Log.e(TAG, "Error updating algorithm status: " + e.getMessage(), e);
+        }
+    }
+
+    private void updateWearDiagnosticLine() {
+        TextView tv = (TextView) mRootView.findViewById(R.id.watch_payload_diag_tv);
+        if (tv == null || !mConnection.mBound) {
+            return;
+        }
+
+        uk.org.openseizuredetector.data.SdData sdData = mConnection.mSdServer.mSdData;
+        long nowMs = System.currentTimeMillis();
+        long payloadAgeMs = sdData.watchLastPayloadReceivedMs > 0
+                ? nowMs - sdData.watchLastPayloadReceivedMs
+                : -1;
+
+        if (sdData.watchLastPayloadReceivedMs <= 0) {
+            tv.setText("Wear: --");
+            tv.setTextColor(warnTextColour);
+            return;
+        }
+
+        StringBuilder text = new StringBuilder();
+        text.append("Wear: ");
+        text.append(formatTime(sdData.watchLastPayloadReceivedMs));
+        text.append(" ");
+        text.append(formatDuration(payloadAgeMs));
+        text.append(" ago ");
+        text.append(sdData.watchLastPayloadPath);
+
+        if (sdData.watchLastAccelLatencyMs >= 0) {
+            text.append(" | seq=");
+            text.append(sdData.watchLastAccelSeq);
+            text.append(" rx=");
+            text.append(formatDuration(sdData.watchLastAccelLatencyMs));
+        }
+
+        tv.setText(text.toString());
+        applyTimingColour(tv, Math.max(payloadAgeMs, sdData.watchLastAccelLatencyMs));
+    }
+
+    private String formatTime(long millis) {
+        return new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(new Date(millis));
+    }
+
+    private String formatDuration(long millis) {
+        if (millis < 0) return "--";
+        if (millis < 1000) return millis + "ms";
+        long totalSec = millis / 1000;
+        if (totalSec < 60) {
+            return totalSec + "s";
+        }
+        return String.format(Locale.getDefault(), "%d:%02d", totalSec / 60, totalSec % 60);
+    }
+
+    private void applyTimingColour(TextView tv, long millis) {
+        if (millis >= LATENCY_CRITICAL_MS) {
+            tv.setTextColor(alarmTextColour);
+        } else if (millis >= LATENCY_WARN_MS) {
+            tv.setTextColor(warnTextColour);
+        } else {
+            tv.setTextColor(okTextColour);
         }
     }
 

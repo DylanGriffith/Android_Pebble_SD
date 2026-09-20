@@ -33,6 +33,8 @@ public class FragmentSystem extends FragmentOsdBaseClass {
     private static final double SAMPLE_PERIOD_SECONDS = 5.0;
     private static final double BATTERY_X_MAX_SECONDS = 86400.0;
     private static final double SIGNAL_X_MAX_SECONDS = 600.0;
+    private static final long LATENCY_WARN_MS = 30_000;
+    private static final long LATENCY_CRITICAL_MS = 120_000;
 
     private GraphView mBattLineChart;
     private GraphView mSignalLineChart;
@@ -268,6 +270,31 @@ public class FragmentSystem extends FragmentOsdBaseClass {
                     tv.setBackgroundColor(warnColour);
                     tv.setTextColor(warnTextColour);
                 }
+
+                long nowMs = System.currentTimeMillis();
+                long payloadReceivedMs = mConnection.mSdServer.mSdData.watchLastPayloadReceivedMs;
+                long payloadAgeMs = payloadReceivedMs > 0 ? nowMs - payloadReceivedMs : -1;
+                tv = (TextView) mRootView.findViewById(R.id.watch_last_payload_tv);
+                if (payloadReceivedMs > 0) {
+                    tv.setText(formatTime(payloadReceivedMs)
+                            + " (" + formatDuration(payloadAgeMs) + " ago)"
+                            + " " + mConnection.mSdServer.mSdData.watchLastPayloadPath);
+                    applyTimingColour(tv, payloadAgeMs);
+                } else {
+                    tv.setText("--");
+                    tv.setTextColor(warnTextColour);
+                }
+
+                long accelLatencyMs = mConnection.mSdServer.mSdData.watchLastAccelLatencyMs;
+                tv = (TextView) mRootView.findViewById(R.id.watch_latency_tv);
+                if (accelLatencyMs >= 0) {
+                    tv.setText("seq=" + mConnection.mSdServer.mSdData.watchLastAccelSeq
+                            + " rx=" + formatDuration(accelLatencyMs));
+                    applyTimingColour(tv, accelLatencyMs);
+                } else {
+                    tv.setText("--");
+                    tv.setTextColor(warnTextColour);
+                }
                 
                 tv = (TextView) mRootView.findViewById(R.id.battTv);
                 tv.setText(getString(R.string.WatchBatteryEquals)
@@ -325,6 +352,30 @@ public class FragmentSystem extends FragmentOsdBaseClass {
             }
         } catch (Exception e) {
             Log.e(TAG, "UpdateUi: Exception - " + e.getMessage());
+        }
+    }
+
+    private String formatTime(long millis) {
+        return new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(new Date(millis));
+    }
+
+    private String formatDuration(long millis) {
+        if (millis < 0) return "--";
+        if (millis < 1000) return millis + "ms";
+        long totalSec = millis / 1000;
+        if (totalSec < 60) {
+            return totalSec + "s";
+        }
+        return String.format(Locale.getDefault(), "%d:%02d", totalSec / 60, totalSec % 60);
+    }
+
+    private void applyTimingColour(TextView tv, long millis) {
+        if (millis >= LATENCY_CRITICAL_MS) {
+            tv.setTextColor(alarmTextColour);
+        } else if (millis >= LATENCY_WARN_MS) {
+            tv.setTextColor(warnTextColour);
+        } else {
+            tv.setTextColor(okTextColour);
         }
     }
 

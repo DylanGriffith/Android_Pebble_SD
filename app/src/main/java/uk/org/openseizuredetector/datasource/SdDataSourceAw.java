@@ -60,6 +60,8 @@ import java.util.concurrent.Executors;
  */
 public class SdDataSourceAw extends SdDataSource implements MessageClient.OnMessageReceivedListener {
     private String TAG = "SdDataSourceAw";
+    private static final long LATENCY_WARN_MS = 30_000;
+    private static final long LATENCY_CRITICAL_MS = 120_000;
 
     // Message paths for Wearable Data Layer communication
     private static final String PATH_ACCEL_DATA = "/osd/accel_data";
@@ -75,8 +77,10 @@ public class SdDataSourceAw extends SdDataSource implements MessageClient.OnMess
     private int nRawData = 0;
     private long mCurrentAccelSeq = -1;
     private long mCurrentAccelSentMs = -1;
+    private long mCurrentAccelReceivedMs = 0;
     private long mLastProcessedAccelSeq = -1;
     private long mLastProcessedAccelSentMs = -1;
+    private long mLastProcessedAccelReceivedMs = 0;
 
     private MessageClient mMessageClient;
     private boolean mIsStarted = false;
@@ -141,6 +145,7 @@ public class SdDataSourceAw extends SdDataSource implements MessageClient.OnMess
     public void onMessageReceived(MessageEvent messageEvent) {
         String path = messageEvent.getPath();
         byte[] data = messageEvent.getData();
+        long receivedMs = System.currentTimeMillis();
 
         Log.v(TAG, "onMessageReceived: " + path);
 
@@ -148,11 +153,13 @@ public class SdDataSourceAw extends SdDataSource implements MessageClient.OnMess
         mWatchAppRunningCheck = true;
         mSdData.watchConnected = true;
         mSdData.watchAppRunning = true;
-        mDataStatusTimeMillis = System.currentTimeMillis();
+        mDataStatusTimeMillis = receivedMs;
+        mSdData.watchLastPayloadPath = path;
+        mSdData.watchLastPayloadReceivedMs = receivedMs;
 
         try {
             if (path.equals(PATH_ACCEL_DATA)) {
-                handleAccelData(data);
+                handleAccelData(data, receivedMs);
             } else if (path.equals(PATH_SETTINGS)) {
                 handleSettings(data);
             } else if (path.equals(PATH_HR_DATA)) {
@@ -169,19 +176,20 @@ public class SdDataSourceAw extends SdDataSource implements MessageClient.OnMess
      * Handle accelerometer data from watch
      * Expected format: JSON with "samples" array or raw binary data
      */
-    private void handleAccelData(byte[] data) {
+    private void handleAccelData(byte[] data, long receivedMs) {
         try {
             // Try to parse as JSON first
             String jsonStr = new String(data, StandardCharsets.UTF_8);
             JSONObject json = new JSONObject(jsonStr);
+            long seq = json.optLong("seq", -1);
+            long sentMs = json.optLong("sent_ms", -1);
+            recordAccelPayloadTiming(seq, sentMs, receivedMs);
 
             if (json.has("samples")) {
                 // JSON format with samples array
                 org.json.JSONArray samples = json.getJSONArray("samples");
-                long seq = json.optLong("seq", -1);
-                long sentMs = json.optLong("sent_ms", -1);
                 for (int i = 0; i < samples.length(); i++) {
-                    appendAccelSample(samples.getDouble(i), seq, sentMs);
+                    appendAccelSample(samples.getDouble(i), seq, sentMs, receivedMs);
                 }
             } else if (json.has("x") && json.has("y") && json.has("z")) {
                 // Single 3D sample
@@ -189,9 +197,7 @@ public class SdDataSourceAw extends SdDataSource implements MessageClient.OnMess
                 double y = json.getDouble("y");
                 double z = json.getDouble("z");
                 double magnitude = Math.sqrt(x * x + y * y + z * z);
-                long seq = json.optLong("seq", -1);
-                long sentMs = json.optLong("sent_ms", -1);
-                appendAccelSample(magnitude, seq, sentMs);
+                appendAccelSample(magnitude, seq, sentMs, receivedMs);
             }
         } catch (JSONException e) {
             // Not JSON, try parsing as binary data
@@ -200,6 +206,32 @@ public class SdDataSourceAw extends SdDataSource implements MessageClient.OnMess
             } catch (Exception ex) {
                 Log.e(TAG, "Error parsing accel data: " + ex.toString());
             }
+        }
+    }
+
+    private void recordAccelPayloadTiming(long seq, long sentMs, long receivedMs) {
+        mSdData.watchLastAccelSeq = seq;
+        mSdData.watchLastAccelSentMs = sentMs;
+        mSdData.watchLastAccelReceivedMs = receivedMs;
+        mSdData.watchLastAccelLatencyMs = sentMs > 0 ? receivedMs - sentMs : -1;
+
+        if (mSdData.watchLastAccelLatencyMs < 0) {
+            Log.i(TAG, "rxTiming path=" + PATH_ACCEL_DATA + " seq=" + seq
+                    + " receivedMs=" + receivedMs + " latencyMs=unknown");
+            return;
+        }
+
+        String message = "rxTiming path=" + PATH_ACCEL_DATA
+                + " seq=" + seq
+                + " sentMs=" + sentMs
+                + " receivedMs=" + receivedMs
+                + " latencyMs=" + mSdData.watchLastAccelLatencyMs;
+        if (mSdData.watchLastAccelLatencyMs >= LATENCY_CRITICAL_MS) {
+            Log.e(TAG, "timingCritical " + message);
+        } else if (mSdData.watchLastAccelLatencyMs >= LATENCY_WARN_MS) {
+            Log.w(TAG, "timingWarn " + message);
+        } else {
+            Log.i(TAG, "timingOk " + message);
         }
     }
 
@@ -215,34 +247,37 @@ public class SdDataSourceAw extends SdDataSource implements MessageClient.OnMess
                 .get(samples);
 
         for (short sample : samples) {
-            appendAccelSample(sample, -1, -1);
+            appendAccelSample(sample, -1, -1, System.currentTimeMillis());
         }
     }
 
-    private void appendAccelSample(double sample, long seq, long sentMs) {
+    private void appendAccelSample(double sample, long seq, long sentMs, long receivedMs) {
         if (nRawData == 0) {
             mCurrentAccelSeq = seq;
             mCurrentAccelSentMs = sentMs;
+            mCurrentAccelReceivedMs = receivedMs;
         }
 
         rawData[nRawData] = sample;
         nRawData++;
 
         if (nRawData >= MAX_RAW_DATA) {
-            processAccelData(mCurrentAccelSeq, mCurrentAccelSentMs);
+            processAccelData(mCurrentAccelSeq, mCurrentAccelSentMs, mCurrentAccelReceivedMs);
             nRawData = 0;
             mCurrentAccelSeq = -1;
             mCurrentAccelSentMs = -1;
+            mCurrentAccelReceivedMs = 0;
         }
     }
 
     /**
      * Process buffered accelerometer data by calling doAnalysis
      */
-    private void processAccelData(long accelSeq, long accelSentMs) {
+    private void processAccelData(long accelSeq, long accelSentMs, long accelReceivedMs) {
         Log.v(TAG, "processAccelData(): processing " + nRawData + " samples");
         mLastProcessedAccelSeq = accelSeq;
         mLastProcessedAccelSentMs = accelSentMs;
+        mLastProcessedAccelReceivedMs = accelReceivedMs;
 
         // Copy to mSdData
         for (int i = 0; i < nRawData && i < mSdData.rawData.length; i++) {
@@ -325,6 +360,7 @@ public class SdDataSourceAw extends SdDataSource implements MessageClient.OnMess
             json.put("alarm_phrase", mSdData.alarmPhrase);
             json.put("accel_seq", mLastProcessedAccelSeq);
             json.put("accel_sent_ms", mLastProcessedAccelSentMs);
+            json.put("phone_received_ms", mLastProcessedAccelReceivedMs);
             json.put("phone_sent_ms", System.currentTimeMillis());
 
             byte[] data = json.toString().getBytes(StandardCharsets.UTF_8);

@@ -46,6 +46,16 @@
 
         </com.google.android.material.card.MaterialCardView>
 
+        <TextView
+            android:id="@+id/watch_payload_diag_tv"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Wear: --"
+            android:textSize="11sp"
+            android:gravity="center"
+            android:alpha="0.8"
+            android:layout_marginBottom="4dp" />
+
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/algorithmsCard"
             android:layout_width="match_parent"

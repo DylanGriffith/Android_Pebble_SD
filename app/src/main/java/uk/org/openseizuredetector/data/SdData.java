@@ -129,6 +129,12 @@ public class SdData implements Parcelable {
     public boolean watchConnected = false;
     public boolean watchAppRunning = false;
     public boolean serverOK = false;
+    public String watchLastPayloadPath = "";
+    public long watchLastPayloadReceivedMs = 0;
+    public long watchLastAccelSeq = -1;
+    public long watchLastAccelSentMs = -1;
+    public long watchLastAccelReceivedMs = 0;
+    public long watchLastAccelLatencyMs = -1;
 
     public boolean mHRAlarmStanding = false;
     public boolean mHRFaultStanding = false;
@@ -203,6 +209,12 @@ public class SdData implements Parcelable {
         watchConnected = jo.getBoolean("watchConnected");
         watchAppRunning = jo.getBoolean("watchAppRunning");
         haveSettings = jo.getBoolean("haveSettings");
+        watchLastPayloadPath = jo.optString("watchLastPayloadPath", "");
+        watchLastPayloadReceivedMs = jo.optLong("watchLastPayloadReceivedMs", 0);
+        watchLastAccelSeq = jo.optLong("watchLastAccelSeq", -1);
+        watchLastAccelSentMs = jo.optLong("watchLastAccelSentMs", -1);
+        watchLastAccelReceivedMs = jo.optLong("watchLastAccelReceivedMs", 0);
+        watchLastAccelLatencyMs = jo.optLong("watchLastAccelLatencyMs", -1);
 
         alarmState = jo.getLong("alarmState");
         alarmPhrase = jo.getString("alarmPhrase");
@@ -406,6 +418,12 @@ public class SdData implements Parcelable {
             jsonObj.put("watchFwVersion", watchFwVersion);
             jsonObj.put("watchSdVersion", watchSdVersion);
             jsonObj.put("watchSignalStrength", watchSignalStrength);
+            jsonObj.put("watchLastPayloadPath", watchLastPayloadPath);
+            jsonObj.put("watchLastPayloadReceivedMs", watchLastPayloadReceivedMs);
+            jsonObj.put("watchLastAccelSeq", watchLastAccelSeq);
+            jsonObj.put("watchLastAccelSentMs", watchLastAccelSentMs);
+            jsonObj.put("watchLastAccelReceivedMs", watchLastAccelReceivedMs);
+            jsonObj.put("watchLastAccelLatencyMs", watchLastAccelLatencyMs);
 
             retval = jsonObj.toString();
         } catch (Exception ex) {
@@ -444,6 +462,12 @@ public class SdData implements Parcelable {
             jsonObj.put("watchConnected", watchConnected);
             jsonObj.put("watchAppRunning", watchAppRunning);
             jsonObj.put("haveSettings", haveSettings);
+            jsonObj.put("watchLastPayloadPath", watchLastPayloadPath);
+            jsonObj.put("watchLastPayloadReceivedMs", watchLastPayloadReceivedMs);
+            jsonObj.put("watchLastAccelSeq", watchLastAccelSeq);
+            jsonObj.put("watchLastAccelSentMs", watchLastAccelSentMs);
+            jsonObj.put("watchLastAccelReceivedMs", watchLastAccelReceivedMs);
+            jsonObj.put("watchLastAccelLatencyMs", watchLastAccelLatencyMs);
             jsonObj.put("alarmState", alarmState);
             jsonObj.put("alarmPhrase", alarmPhrase);
             jsonObj.put("alarmCause", alarmCause);
