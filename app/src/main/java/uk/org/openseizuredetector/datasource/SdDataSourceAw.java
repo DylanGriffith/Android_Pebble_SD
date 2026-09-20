@@ -73,6 +73,10 @@ public class SdDataSourceAw extends SdDataSource implements MessageClient.OnMess
     private int MAX_RAW_DATA = 125;  // 5 seconds at 25 Hz
     private double[] rawData = new double[MAX_RAW_DATA];
     private int nRawData = 0;
+    private long mCurrentAccelSeq = -1;
+    private long mCurrentAccelSentMs = -1;
+    private long mLastProcessedAccelSeq = -1;
+    private long mLastProcessedAccelSentMs = -1;
 
     private MessageClient mMessageClient;
     private boolean mIsStarted = false;
@@ -174,15 +178,10 @@ public class SdDataSourceAw extends SdDataSource implements MessageClient.OnMess
             if (json.has("samples")) {
                 // JSON format with samples array
                 org.json.JSONArray samples = json.getJSONArray("samples");
+                long seq = json.optLong("seq", -1);
+                long sentMs = json.optLong("sent_ms", -1);
                 for (int i = 0; i < samples.length(); i++) {
-                    if (nRawData < MAX_RAW_DATA) {
-                        rawData[nRawData] = samples.getDouble(i);
-                        nRawData++;
-                    } else {
-                        // Buffer full, process data
-                        processAccelData();
-                        nRawData = 0;
-                    }
+                    appendAccelSample(samples.getDouble(i), seq, sentMs);
                 }
             } else if (json.has("x") && json.has("y") && json.has("z")) {
                 // Single 3D sample
@@ -190,14 +189,9 @@ public class SdDataSourceAw extends SdDataSource implements MessageClient.OnMess
                 double y = json.getDouble("y");
                 double z = json.getDouble("z");
                 double magnitude = Math.sqrt(x * x + y * y + z * z);
-
-                if (nRawData < MAX_RAW_DATA) {
-                    rawData[nRawData] = magnitude;
-                    nRawData++;
-                } else {
-                    processAccelData();
-                    nRawData = 0;
-                }
+                long seq = json.optLong("seq", -1);
+                long sentMs = json.optLong("sent_ms", -1);
+                appendAccelSample(magnitude, seq, sentMs);
             }
         } catch (JSONException e) {
             // Not JSON, try parsing as binary data
@@ -221,23 +215,34 @@ public class SdDataSourceAw extends SdDataSource implements MessageClient.OnMess
                 .get(samples);
 
         for (short sample : samples) {
-            if (nRawData < MAX_RAW_DATA) {
-                rawData[nRawData] = sample;
-                nRawData++;
-            } else {
-                processAccelData();
-                nRawData = 0;
-                rawData[nRawData] = sample;
-                nRawData++;
-            }
+            appendAccelSample(sample, -1, -1);
+        }
+    }
+
+    private void appendAccelSample(double sample, long seq, long sentMs) {
+        if (nRawData == 0) {
+            mCurrentAccelSeq = seq;
+            mCurrentAccelSentMs = sentMs;
+        }
+
+        rawData[nRawData] = sample;
+        nRawData++;
+
+        if (nRawData >= MAX_RAW_DATA) {
+            processAccelData(mCurrentAccelSeq, mCurrentAccelSentMs);
+            nRawData = 0;
+            mCurrentAccelSeq = -1;
+            mCurrentAccelSentMs = -1;
         }
     }
 
     /**
      * Process buffered accelerometer data by calling doAnalysis
      */
-    private void processAccelData() {
+    private void processAccelData(long accelSeq, long accelSentMs) {
         Log.v(TAG, "processAccelData(): processing " + nRawData + " samples");
+        mLastProcessedAccelSeq = accelSeq;
+        mLastProcessedAccelSentMs = accelSentMs;
 
         // Copy to mSdData
         for (int i = 0; i < nRawData && i < mSdData.rawData.length; i++) {
@@ -318,6 +323,9 @@ public class SdDataSourceAw extends SdDataSource implements MessageClient.OnMess
             JSONObject json = new JSONObject();
             json.put("alarm_state", mSdData.alarmState);
             json.put("alarm_phrase", mSdData.alarmPhrase);
+            json.put("accel_seq", mLastProcessedAccelSeq);
+            json.put("accel_sent_ms", mLastProcessedAccelSentMs);
+            json.put("phone_sent_ms", System.currentTimeMillis());
 
             byte[] data = json.toString().getBytes(StandardCharsets.UTF_8);
             sendMessageToWatch(PATH_ALARM_STATE, data);
