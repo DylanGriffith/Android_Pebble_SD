@@ -298,34 +298,27 @@ public class FragmentCommon extends FragmentOsdBaseClass {
         }
 
         uk.org.openseizuredetector.data.SdData sdData = mConnection.mSdServer.mSdData;
-        long nowMs = System.currentTimeMillis();
-        long payloadAgeMs = sdData.watchLastPayloadReceivedMs > 0
-                ? nowMs - sdData.watchLastPayloadReceivedMs
-                : -1;
+        long worstLatencyMs = sdData.watchWorstAccelLatencyMs;
 
-        if (sdData.watchLastPayloadReceivedMs <= 0) {
-            tv.setText("Wear: --");
+        if (worstLatencyMs < 0) {
+            tv.setText("Wear max latency: --");
             tv.setTextColor(warnTextColour);
             return;
         }
 
         StringBuilder text = new StringBuilder();
-        text.append("Wear: ");
-        text.append(formatTime(sdData.watchLastPayloadReceivedMs));
-        text.append(" ");
-        text.append(formatDuration(payloadAgeMs));
-        text.append(" ago ");
-        text.append(sdData.watchLastPayloadPath);
-
-        if (sdData.watchLastAccelLatencyMs >= 0) {
-            text.append(" | seq=");
-            text.append(sdData.watchLastAccelSeq);
-            text.append(" rx=");
-            text.append(formatDuration(sdData.watchLastAccelLatencyMs));
+        text.append("Wear max latency: ");
+        text.append(formatDuration(worstLatencyMs));
+        text.append(" (seq=");
+        text.append(sdData.watchWorstAccelSeq);
+        if (sdData.watchWorstAccelReceivedMs > 0) {
+            text.append(" at ");
+            text.append(formatTime(sdData.watchWorstAccelReceivedMs));
         }
+        text.append(")");
 
         tv.setText(text.toString());
-        applyTimingColour(tv, Math.max(payloadAgeMs, sdData.watchLastAccelLatencyMs));
+        applyTimingColour(tv, worstLatencyMs);
     }
 
     private String formatTime(long millis) {

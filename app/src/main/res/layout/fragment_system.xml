@@ -270,7 +270,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Last Payload: "
+                        android:text="Worst Latency: "
                         android:textSize="12sp"/>
                     <TextView
                         android:id="@+id/watch_last_payload_tv"
@@ -287,7 +287,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Watch Latency: "
+                        android:text="Worst Seen: "
                         android:textSize="12sp"/>
                     <TextView
                         android:id="@+id/watch_latency_tv"

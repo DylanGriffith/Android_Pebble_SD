@@ -221,6 +221,13 @@ public class SdDataSourceAw extends SdDataSource implements MessageClient.OnMess
             return;
         }
 
+        if (mSdData.watchLastAccelLatencyMs > mSdData.watchWorstAccelLatencyMs) {
+            mSdData.watchWorstAccelSeq = seq;
+            mSdData.watchWorstAccelSentMs = sentMs;
+            mSdData.watchWorstAccelReceivedMs = receivedMs;
+            mSdData.watchWorstAccelLatencyMs = mSdData.watchLastAccelLatencyMs;
+        }
+
         String message = "rxTiming path=" + PATH_ACCEL_DATA
                 + " seq=" + seq
                 + " sentMs=" + sentMs

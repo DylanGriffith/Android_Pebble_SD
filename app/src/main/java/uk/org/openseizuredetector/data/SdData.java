@@ -135,6 +135,10 @@ public class SdData implements Parcelable {
     public long watchLastAccelSentMs = -1;
     public long watchLastAccelReceivedMs = 0;
     public long watchLastAccelLatencyMs = -1;
+    public long watchWorstAccelSeq = -1;
+    public long watchWorstAccelSentMs = -1;
+    public long watchWorstAccelReceivedMs = 0;
+    public long watchWorstAccelLatencyMs = -1;
 
     public boolean mHRAlarmStanding = false;
     public boolean mHRFaultStanding = false;
@@ -215,6 +219,10 @@ public class SdData implements Parcelable {
         watchLastAccelSentMs = jo.optLong("watchLastAccelSentMs", -1);
         watchLastAccelReceivedMs = jo.optLong("watchLastAccelReceivedMs", 0);
         watchLastAccelLatencyMs = jo.optLong("watchLastAccelLatencyMs", -1);
+        watchWorstAccelSeq = jo.optLong("watchWorstAccelSeq", -1);
+        watchWorstAccelSentMs = jo.optLong("watchWorstAccelSentMs", -1);
+        watchWorstAccelReceivedMs = jo.optLong("watchWorstAccelReceivedMs", 0);
+        watchWorstAccelLatencyMs = jo.optLong("watchWorstAccelLatencyMs", -1);
 
         alarmState = jo.getLong("alarmState");
         alarmPhrase = jo.getString("alarmPhrase");
@@ -424,6 +432,10 @@ public class SdData implements Parcelable {
             jsonObj.put("watchLastAccelSentMs", watchLastAccelSentMs);
             jsonObj.put("watchLastAccelReceivedMs", watchLastAccelReceivedMs);
             jsonObj.put("watchLastAccelLatencyMs", watchLastAccelLatencyMs);
+            jsonObj.put("watchWorstAccelSeq", watchWorstAccelSeq);
+            jsonObj.put("watchWorstAccelSentMs", watchWorstAccelSentMs);
+            jsonObj.put("watchWorstAccelReceivedMs", watchWorstAccelReceivedMs);
+            jsonObj.put("watchWorstAccelLatencyMs", watchWorstAccelLatencyMs);
 
             retval = jsonObj.toString();
         } catch (Exception ex) {
@@ -468,6 +480,10 @@ public class SdData implements Parcelable {
             jsonObj.put("watchLastAccelSentMs", watchLastAccelSentMs);
             jsonObj.put("watchLastAccelReceivedMs", watchLastAccelReceivedMs);
             jsonObj.put("watchLastAccelLatencyMs", watchLastAccelLatencyMs);
+            jsonObj.put("watchWorstAccelSeq", watchWorstAccelSeq);
+            jsonObj.put("watchWorstAccelSentMs", watchWorstAccelSentMs);
+            jsonObj.put("watchWorstAccelReceivedMs", watchWorstAccelReceivedMs);
+            jsonObj.put("watchWorstAccelLatencyMs", watchWorstAccelLatencyMs);
             jsonObj.put("alarmState", alarmState);
             jsonObj.put("alarmPhrase", alarmPhrase);
             jsonObj.put("alarmCause", alarmCause);

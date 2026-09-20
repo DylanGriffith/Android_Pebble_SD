@@ -271,26 +271,27 @@ public class FragmentSystem extends FragmentOsdBaseClass {
                     tv.setTextColor(warnTextColour);
                 }
 
-                long nowMs = System.currentTimeMillis();
-                long payloadReceivedMs = mConnection.mSdServer.mSdData.watchLastPayloadReceivedMs;
-                long payloadAgeMs = payloadReceivedMs > 0 ? nowMs - payloadReceivedMs : -1;
+                long worstLatencyMs = mConnection.mSdServer.mSdData.watchWorstAccelLatencyMs;
                 tv = (TextView) mRootView.findViewById(R.id.watch_last_payload_tv);
-                if (payloadReceivedMs > 0) {
-                    tv.setText(formatTime(payloadReceivedMs)
-                            + " (" + formatDuration(payloadAgeMs) + " ago)"
-                            + " " + mConnection.mSdServer.mSdData.watchLastPayloadPath);
-                    applyTimingColour(tv, payloadAgeMs);
+                if (worstLatencyMs >= 0) {
+                    tv.setText(formatDuration(worstLatencyMs));
+                    applyTimingColour(tv, worstLatencyMs);
                 } else {
                     tv.setText("--");
                     tv.setTextColor(warnTextColour);
                 }
 
-                long accelLatencyMs = mConnection.mSdServer.mSdData.watchLastAccelLatencyMs;
                 tv = (TextView) mRootView.findViewById(R.id.watch_latency_tv);
-                if (accelLatencyMs >= 0) {
-                    tv.setText("seq=" + mConnection.mSdServer.mSdData.watchLastAccelSeq
-                            + " rx=" + formatDuration(accelLatencyMs));
-                    applyTimingColour(tv, accelLatencyMs);
+                if (worstLatencyMs >= 0) {
+                    StringBuilder worstDetail = new StringBuilder();
+                    worstDetail.append("seq=");
+                    worstDetail.append(mConnection.mSdServer.mSdData.watchWorstAccelSeq);
+                    if (mConnection.mSdServer.mSdData.watchWorstAccelReceivedMs > 0) {
+                        worstDetail.append(" at ");
+                        worstDetail.append(formatTime(mConnection.mSdServer.mSdData.watchWorstAccelReceivedMs));
+                    }
+                    tv.setText(worstDetail.toString());
+                    applyTimingColour(tv, worstLatencyMs);
                 } else {
                     tv.setText("--");
                     tv.setTextColor(warnTextColour);
