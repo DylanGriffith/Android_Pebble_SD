@@ -73,6 +73,9 @@
     <string name="PressToReEnable"> Restore</string>
     <string name="CancelAudibleAlarms">Mute Alarms</string>
     <string name="AudibleAlarmsOff">Audible Alarms OFF</string>
+    <string name="MuteAlarms10ButtonTxt">Mute 10 min</string>
+    <string name="MuteAlarms30ButtonTxt">Mute 30 min</string>
+    <string name="RestoreAlarmsButtonTxt">Restore</string>
     <string name="Fault">FAULT</string>
     <string name="authenticate">Log In</string>
     <string name="not_authenticated">Not Logged In</string>

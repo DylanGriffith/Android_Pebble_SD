@@ -152,6 +152,7 @@ public class SdServer extends Service implements SdDataReceiver {
     private CancelAudibleTimer mCancelAudibleTimer = null;
     private int mCancelAudiblePeriod = 10;  // Cancel Audible Period in minutes
     private long mCancelAudibleTimeRemaining = 0;
+    private long mCancelAudibleUntilMillis = 0;
     private FaultTimer mFaultTimer = null;
     private CheckEventsTimer mEventsTimer = null;
     private int mFaultTimerPeriod = 30;  // Fault Timer Period in sec
@@ -1868,24 +1869,42 @@ public class SdServer extends Service implements SdDataReceiver {
 
 
     public void cancelAudible() {
-        // Start timer to remove the cancel audible flag
-        // after the required period.
+        if (mCancelAudible) {
+            cancelAudibleMute();
+        } else {
+            muteForSeconds(mCancelAudiblePeriod * 60L);
+        }
+    }
+
+    public void muteForSeconds(long seconds) {
+        if (seconds <= 0) {
+            cancelAudibleMute();
+            return;
+        }
+
         if (mCancelAudibleTimer != null) {
-            Log.i(TAG, "cancelAudible(): cancel audible timer already running - cancelling it.");
+            Log.i(TAG, "muteForSeconds(): replacing existing cancel audible timer.");
             mCancelAudibleTimer.cancel();
             mCancelAudibleTimer = null;
-            mCancelAudible = false;
-        } else {
-            Log.i(TAG, "cancelAudible(): starting cancel audible timer");
-            mCancelAudible = true;
-            // Initialize the time remaining to the full duration before starting the timer
-            // so the UI displays the correct value immediately
-            mCancelAudibleTimeRemaining = mCancelAudiblePeriod * 60;
-            mCancelAudibleTimer =
-                    // conver to ms.
-                    new CancelAudibleTimer(mCancelAudiblePeriod * 60 * 1000, 1000);
-            mCancelAudibleTimer.start();
         }
+
+        Log.i(TAG, "muteForSeconds(): muting for " + seconds + " seconds");
+        mCancelAudible = true;
+        mCancelAudibleTimeRemaining = seconds;
+        mCancelAudibleUntilMillis = System.currentTimeMillis() + seconds * 1000;
+        mCancelAudibleTimer = new CancelAudibleTimer(seconds * 1000, 1000);
+        mCancelAudibleTimer.start();
+    }
+
+    public void cancelAudibleMute() {
+        Log.i(TAG, "cancelAudibleMute()");
+        if (mCancelAudibleTimer != null) {
+            mCancelAudibleTimer.cancel();
+            mCancelAudibleTimer = null;
+        }
+        mCancelAudible = false;
+        mCancelAudibleTimeRemaining = 0;
+        mCancelAudibleUntilMillis = 0;
     }
 
     public boolean isAudibleCancelled() {
@@ -1894,6 +1913,18 @@ public class SdServer extends Service implements SdDataReceiver {
 
     public long cancelAudibleTimeRemaining() {
         return mCancelAudibleTimeRemaining;
+    }
+
+    public long cancelAudibleUntilMillis() {
+        return mCancelAudible ? mCancelAudibleUntilMillis : 0;
+    }
+
+    public boolean isAudibleAlarmEnabled() {
+        return mAudibleAlarm;
+    }
+
+    public boolean isAudibleWarningEnabled() {
+        return mAudibleWarning;
     }
 
     public boolean isLatchAlarms() {
@@ -2379,6 +2410,8 @@ public class SdServer extends Service implements SdDataReceiver {
         @Override
         public void onFinish() {
             mCancelAudible = false;
+            mCancelAudibleTimeRemaining = 0;
+            mCancelAudibleUntilMillis = 0;
             Log.v(TAG, "mCancelAudibleTimer - removing cancelAudible flag");
         }
 

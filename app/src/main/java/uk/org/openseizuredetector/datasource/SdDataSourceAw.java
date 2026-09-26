@@ -24,6 +24,7 @@
 package uk.org.openseizuredetector.datasource;
 import uk.org.openseizuredetector.R;
 
+import uk.org.openseizuredetector.SdServer;
 import uk.org.openseizuredetector.datasource.SdDataSource;
 import uk.org.openseizuredetector.datasource.SdDataSourceAw;
 import android.content.Context;
@@ -70,6 +71,7 @@ public class SdDataSourceAw extends SdDataSource implements MessageClient.OnMess
     private static final String PATH_REQUEST_DATA = "/osd/request_data";
     private static final String PATH_ALARM_STATE = "/osd/alarm_state";
     private static final String PATH_SEND_SETTINGS = "/osd/send_settings";
+    private static final String PATH_USER_ACTION = "/osd/user_action";
 
     // Raw data storage
     private int MAX_RAW_DATA = 125;  // 5 seconds at 25 Hz
@@ -164,6 +166,8 @@ public class SdDataSourceAw extends SdDataSource implements MessageClient.OnMess
                 handleSettings(data);
             } else if (path.equals(PATH_HR_DATA)) {
                 handleHrData(data);
+            } else if (path.equals(PATH_USER_ACTION)) {
+                handleUserAction(data);
             } else {
                 Log.w(TAG, "Unknown message path: " + path);
             }
@@ -357,6 +361,38 @@ public class SdDataSourceAw extends SdDataSource implements MessageClient.OnMess
         }
     }
 
+    private void handleUserAction(byte[] data) {
+        if (!(mSdDataReceiver instanceof SdServer)) {
+            Log.w(TAG, "handleUserAction(): receiver is not SdServer");
+            return;
+        }
+
+        try {
+            String jsonStr = new String(data, StandardCharsets.UTF_8);
+            JSONObject json = new JSONObject(jsonStr);
+            String action = json.optString("action", "");
+            SdServer sdServer = (SdServer) mSdDataReceiver;
+
+            if ("mute".equals(action)) {
+                long seconds = json.optLong("seconds", 600);
+                Log.i(TAG, "handleUserAction(): mute for " + seconds + " seconds");
+                sdServer.muteForSeconds(seconds);
+            } else if ("unmute".equals(action)) {
+                Log.i(TAG, "handleUserAction(): unmute");
+                sdServer.cancelAudibleMute();
+            } else if ("accept".equals(action)) {
+                Log.i(TAG, "handleUserAction(): accept");
+                sdServer.acceptAlarm();
+            } else {
+                Log.w(TAG, "handleUserAction(): unknown action=" + action);
+            }
+
+            sendAlarmStateToWatch();
+        } catch (JSONException e) {
+            Log.e(TAG, "Error parsing user action: " + e.toString());
+        }
+    }
+
     /**
      * Send alarm state back to watch
      */
@@ -369,6 +405,12 @@ public class SdDataSourceAw extends SdDataSource implements MessageClient.OnMess
             json.put("accel_sent_ms", mLastProcessedAccelSentMs);
             json.put("phone_received_ms", mLastProcessedAccelReceivedMs);
             json.put("phone_sent_ms", System.currentTimeMillis());
+            if (mSdDataReceiver instanceof SdServer) {
+                SdServer sdServer = (SdServer) mSdDataReceiver;
+                json.put("muted_until_ms", sdServer.cancelAudibleUntilMillis());
+                json.put("audible_alarm_enabled", sdServer.isAudibleAlarmEnabled());
+                json.put("audible_warning_enabled", sdServer.isAudibleWarningEnabled());
+            }
 
             byte[] data = json.toString().getBytes(StandardCharsets.UTF_8);
             sendMessageToWatch(PATH_ALARM_STATE, data);

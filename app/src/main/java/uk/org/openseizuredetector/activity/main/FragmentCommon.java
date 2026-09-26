@@ -87,8 +87,26 @@ public class FragmentCommon extends FragmentOsdBaseClass {
             public void onClick(View v) {
                 Log.v(TAG, "cancelAudibleButton.onClick()");
                 if (mConnection.mBound) {
-                    mConnection.mSdServer.cancelAudible();
-                    // Force immediate UI update so user sees MUTE status right away
+                    if (mConnection.mSdServer.isAudibleCancelled()) {
+                        mConnection.mSdServer.cancelAudibleMute();
+                    } else {
+                        mConnection.mSdServer.muteForSeconds(10 * 60);
+                    }
+                    updateUi();
+                }
+            }
+        });
+
+        button = (Button) mRootView.findViewById(R.id.cancelAudible30Button);
+        button.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                Log.v(TAG, "cancelAudible30Button.onClick()");
+                if (mConnection.mBound) {
+                    if (mConnection.mSdServer.isAudibleCancelled()) {
+                        mConnection.mSdServer.cancelAudibleMute();
+                    } else {
+                        mConnection.mSdServer.muteForSeconds(30 * 60);
+                    }
                     updateUi();
                 }
             }
@@ -240,18 +258,21 @@ public class FragmentCommon extends FragmentOsdBaseClass {
         // This is because it also mutes SMS alerts
         Button cancelAudibleButton =
                 (Button) mRootView.findViewById(R.id.cancelAudibleButton);
+        Button cancelAudible30Button =
+                (Button) mRootView.findViewById(R.id.cancelAudible30Button);
         if (mConnection.mBound) {
             if (mConnection.mSdServer.isAudibleCancelled()) {
                 cancelAudibleButton.setText(getString(R.string.AudibleAlarmsCancelledFor)
                         + " " + mConnection.mSdServer.
                         cancelAudibleTimeRemaining()
                         + " sec");
+                cancelAudible30Button.setText(R.string.RestoreAlarmsButtonTxt);
             } else {
-                cancelAudibleButton.setText(R.string.CancelAudibleAlarms);
+                cancelAudibleButton.setText(R.string.MuteAlarms10ButtonTxt);
+                cancelAudible30Button.setText(R.string.MuteAlarms30ButtonTxt);
             }
-            // Always enable the mute button - it should be active regardless of audible alarm state
-            // since it also mutes SMS messages
             cancelAudibleButton.setEnabled(true);
+            cancelAudible30Button.setEnabled(true);
         }
 
 

@@ -77,47 +77,72 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
+            android:orientation="vertical"
             android:gravity="center_vertical"
             android:spacing="2dp">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/acceptAlarmButton"
-                android:layout_width="0dp"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginEnd="4dp"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                style="@style/Widget.Material3.Button.TonalButton"
-                android:text="@string/AcceptAlarmBtnTxt"
-                android:textSize="11sp" />
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/cancelAudibleButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="2dp"
-                android:layout_marginEnd="4dp"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                style="@style/Widget.Material3.Button.TonalButton"
-                android:text="@string/CancelAudibleButtonTxt"
-                android:textSize="11sp" />
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/acceptAlarmButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="4dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:text="@string/AcceptAlarmBtnTxt"
+                    android:textSize="11sp" />
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/manualAlarmButton"
-                android:layout_width="0dp"
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/manualAlarmButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="2dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    style="@style/Widget.Material3.Button"
+                    android:text="@string/ManualAlarmBtnTxt"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="2dp"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                style="@style/Widget.Material3.Button"
-                android:text="@string/ManualAlarmBtnTxt"
-                android:textSize="11sp"
-                android:textStyle="bold" />
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/cancelAudibleButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="4dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:text="@string/MuteAlarms10ButtonTxt"
+                    android:textSize="11sp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/cancelAudible30Button"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="2dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:text="@string/MuteAlarms30ButtonTxt"
+                    android:textSize="11sp" />
+            </LinearLayout>
         </LinearLayout>
 
     </androidx.appcompat.widget.LinearLayoutCompat>
