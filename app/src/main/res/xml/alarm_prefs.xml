@@ -7,6 +7,11 @@
             android:summary="@string/enable_audible_alarm_summary"
             android:title="@string/enable_audible_alarm_title" />
         <CheckBoxPreference
+            android:defaultValue="false"
+            android:key="VibrateOnlyAlerts"
+            android:summary="@string/vibrate_only_alerts_summary"
+            android:title="@string/vibrate_only_alerts_title" />
+        <CheckBoxPreference
             android:defaultValue="true"
             android:key="AudibleWarning"
             android:summary="@string/enable_audible_warning_summary"

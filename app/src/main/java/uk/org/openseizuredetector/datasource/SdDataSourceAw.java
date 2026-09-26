@@ -409,6 +409,7 @@ public class SdDataSourceAw extends SdDataSource implements MessageClient.OnMess
                 SdServer sdServer = (SdServer) mSdDataReceiver;
                 json.put("muted_until_ms", sdServer.cancelAudibleUntilMillis());
                 json.put("audible_alarm_enabled", sdServer.isAudibleAlarmEnabled());
+                json.put("vibrate_only_alerts", sdServer.isVibrateOnlyAlertsEnabled());
                 json.put("audible_warning_enabled", sdServer.isAudibleWarningEnabled());
             }
 

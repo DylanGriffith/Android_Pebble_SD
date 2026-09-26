@@ -215,6 +215,8 @@
     <string name="latch_timer_period_summary">Duration in seconds that alarms will initiate for before being silenced automatically.</string>
     <string name="enable_audible_alarm_summary">Issue an audible alarm if the seizure detector enters an alarm condition.</string>
     <string name="enable_audible_alarm_title">Enable Audible Alarm</string>
+    <string name="vibrate_only_alerts_summary">Vibrate instead of playing sound for warnings, alarms, and fault warnings.</string>
+    <string name="vibrate_only_alerts_title">Vibrate Only Alerts</string>
     <string name="enable_audible_warning_summary">Issue an audible alarm if the seizure detector enters a warning (pre-alarm) condition.</string>
     <string name="enable_audible_warning_title">Enable Audible Warnings</string>
     <string name="enable_audible_fault_summary">Issue an audible alarm if the system detects a fault (e.g. can not talk to watch).</string>

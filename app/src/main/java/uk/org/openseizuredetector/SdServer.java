@@ -59,6 +59,9 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.os.PowerManager;
 import android.os.PowerManager.WakeLock;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
+import android.os.VibratorManager;
 import android.service.notification.StatusBarNotification;
 import android.telephony.SmsManager;
 import uk.org.openseizuredetector.data.logging.Log;
@@ -185,6 +188,7 @@ public class SdServer extends Service implements SdDataReceiver {
     private LatchAlarmTimer mLatchAlarmTimer = null;
     private boolean mCancelAudible = false;
     public boolean mAudibleAlarm = false;   // set to public because it is accessed by MainActivity
+    private boolean mVibrateOnlyAlerts = false;
     private boolean mAudibleWarning = false;
     private boolean mAudibleFaultWarning = false;
     private boolean mMp3Alarm = false;
@@ -226,6 +230,7 @@ public class SdServer extends Service implements SdDataReceiver {
     private OsdUtil mUtil;
     private Handler mHandler;
     private ToneGenerator mToneGenerator;
+    private Vibrator mVibrator;
     private android.media.MediaPlayer mMediaPlayer = null; // used for MP3 alarm sounds
 
     private NetworkBroadcastReceiver mNetworkBroadcastReceiver;
@@ -276,6 +281,13 @@ public class SdServer extends Service implements SdDataReceiver {
         mSdData = new SdData();
         mSdDataHistory = new uk.org.openseizuredetector.data.SdDataHistory();  // Initialize history buffers
         mToneGenerator = new ToneGenerator(AudioManager.STREAM_ALARM, 100);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            VibratorManager vibratorManager =
+                    (VibratorManager) getSystemService(Context.VIBRATOR_MANAGER_SERVICE);
+            mVibrator = vibratorManager != null ? vibratorManager.getDefaultVibrator() : null;
+        } else {
+            mVibrator = getSystemService(Vibrator.class);
+        }
 
         mUtil = new OsdUtil(getApplicationContext(), mHandler);
         Log.i(TAG, "SdServer.onCreate()");
@@ -823,6 +835,10 @@ public class SdServer extends Service implements SdDataReceiver {
             stopWebServer();
 
             stopMp3();  // release MediaPlayer if active (must be before ToneGenerator release)
+            if (mVibrator != null) {
+                mVibrator.cancel();
+                mVibrator = null;
+            }
             Log.i(TAG, "SdServer.onDestroy() - releasing mToneGenerator");
             if (mToneGenerator != null) {
                 mToneGenerator.release();
@@ -1613,22 +1629,25 @@ public class SdServer extends Service implements SdDataReceiver {
         }
     }
 
-    /*
-     * beep, provided mAudibleAlarm is set
-     */
+    /** Produce the configured fault-warning alert. */
     public void faultWarningBeep() {
         if (mCancelAudible || (mSdData != null && mSdData.mMute != 0)) {
             Log.v(TAG, "faultWarningBeep() - CancelAudible Active - silent beep...");
         } else {
             if (mAudibleFaultWarning) {
-                if (mMp3Alarm) {
+                if (mVibrateOnlyAlerts) {
+                    Log.i(TAG, "SdServer.faultWarningBeep() - vibration only");
+                    vibrateWarning();
+                } else if (mMp3Alarm) {
                     Log.i(TAG, "SdServer.faultWarningBeep() - playing MP3");
                     playMp3(mMp3FaultUri, "fault");
                 } else {
                     beep(10);
                 }
                 Log.v(TAG, "faultWarningBeep()");
-                Log.i(TAG, "SdServer.faultWarningBeep() - beeping");
+                if (!mVibrateOnlyAlerts) {
+                    Log.i(TAG, "SdServer.faultWarningBeep() - beeping");
+                }
             } else {
                 Log.v(TAG, "faultWarningBeep() - silent...");
             }
@@ -1636,44 +1655,67 @@ public class SdServer extends Service implements SdDataReceiver {
     }
 
 
-    /*
-     * beep, provided mAudibleAlarm is set
-     */
+    /** Produce the configured alarm alert. */
     public void alarmBeep() {
         if (mCancelAudible) {
             Log.v(TAG, "alarmBeep() - CancelAudible Active - silent beep...");
         } else {
             if (mAudibleAlarm) {
-                if (mMp3Alarm) {
+                if (mVibrateOnlyAlerts) {
+                    Log.i(TAG, "SdServer.alarmBeep() - vibration only");
+                    vibrateAlarm();
+                } else if (mMp3Alarm) {
                     Log.i(TAG, "SdServer.alarmBeep() - playing MP3");
                     playMp3(mMp3AlarmUri, "alarm");
                 } else {
                     beep(3000);
                 }
                 Log.v(TAG, "alarmBeep()");
-                Log.i(TAG, "SdServer.alarmBeep() - beeping");
+                if (!mVibrateOnlyAlerts) {
+                    Log.i(TAG, "SdServer.alarmBeep() - beeping");
+                }
             } else {
                 Log.v(TAG, "alarmBeep() - silent...");
             }
         }
     }
 
-    /*
-     * beep, provided mAudibleWarning is set
-     */
+    private void vibrateAlarm() {
+        vibrateAlert(new long[]{0, 800, 400, 800, 400, 800});
+    }
+
+    private void vibrateWarning() {
+        vibrateAlert(new long[]{0, 400});
+    }
+
+    private void vibrateAlert(long[] pattern) {
+        if (mVibrator == null || !mVibrator.hasVibrator()) {
+            Log.w(TAG, "vibrateAlert() - vibrator unavailable");
+            return;
+        }
+        mVibrator.cancel();
+        mVibrator.vibrate(VibrationEffect.createWaveform(pattern, -1));
+    }
+
+    /** Produce the configured warning alert. */
     public void warningBeep() {
         if (mCancelAudible) {
             Log.v(TAG, "warningBeep() - CancelAudible Active - silent beep...");
         } else {
             if (mAudibleWarning) {
-                if (mMp3Alarm) {
+                if (mVibrateOnlyAlerts) {
+                    Log.i(TAG, "SdServer.warningBeep() - vibration only");
+                    vibrateWarning();
+                } else if (mMp3Alarm) {
                     Log.i(TAG, "SdServer.warningBeep() - playing MP3");
                     playMp3(mMp3WarningUri, "warning");
                 } else {
                     beep(100);
                 }
                 Log.v(TAG, "warningBeep()");
-                Log.i(TAG, "SdServer.warningBeep() - beeping");
+                if (!mVibrateOnlyAlerts) {
+                    Log.i(TAG, "SdServer.warningBeep() - beeping");
+                }
             } else {
                 Log.v(TAG, "warningBeep() - silent...");
             }
@@ -1923,6 +1965,10 @@ public class SdServer extends Service implements SdDataReceiver {
         return mAudibleAlarm;
     }
 
+    public boolean isVibrateOnlyAlertsEnabled() {
+        return mVibrateOnlyAlerts;
+    }
+
     public boolean isAudibleWarningEnabled() {
         return mAudibleWarning;
     }
@@ -2098,6 +2144,9 @@ public class SdServer extends Service implements SdDataReceiver {
 
             mAudibleAlarm = SP.getBoolean("AudibleAlarm", true);
             Log.d(TAG, "updatePrefs() - mAudibleAlarm = " + mAudibleAlarm);
+            mVibrateOnlyAlerts = SP.getBoolean(
+                    "VibrateOnlyAlerts", SP.getBoolean("VibrateOnlyAlarm", false));
+            Log.d(TAG, "updatePrefs() - mVibrateOnlyAlerts = " + mVibrateOnlyAlerts);
             mAudibleWarning = SP.getBoolean("AudibleWarning", true);
             Log.d(TAG, "updatePrefs() - mAudibleWarning = " + mAudibleWarning);
             mMp3Alarm = SP.getBoolean("UseMp3Alarm", false);
